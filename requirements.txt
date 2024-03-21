@@ -1,0 +1,6 @@
+streamlit
+stremalit_image_comparison
+pdf2image
+opencv-python-headless
+tqdm
+Pillow
