@@ -1,5 +1,5 @@
 streamlit
-stremalit_image_comparison
+streamlit_image_comparison
 pdf2image
 opencv-python-headless
 tqdm
