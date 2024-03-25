@@ -22,9 +22,8 @@ def add_poppler_path():
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
-    print("num:{}".format(k))
-    print("pdf_path:{}".format(pdf_path))
     pdfs = glob.glob(pdf_path + r"\*.pdf", recursive = False)
+    print("pdfs:{}".format(pdfs))
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
         print_text = "突き合わせ元"
@@ -38,6 +37,7 @@ def pdf2images(k, pdf_path):
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
+        print(filename)
         pages = convert_from_path(str(pdf) , dpi = 200)
         print()
         print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
@@ -119,7 +119,7 @@ def streamlit_main():
     bold = st.sidebar.slider(
         "差分を囲う線の太さ", 0, 10, 3)
     st.sidebar.divider()
-
+    print("before_pdf_file:{} after_pdf_file:{} color:{} bold:{}".format(before_pdf_file, after_pdf_file, color, bold))
 
     if len(before_pdf_file) == 0 or len(after_pdf_file) == 0:
         st.warning("突き合わせ元と突き合わせ先のpdfファイルのページ数と縦横のサイズが同じことを確認の上，アップロードをしてください。", icon="⚠️")
