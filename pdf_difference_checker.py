@@ -130,7 +130,9 @@ def streamlit_main():
                 color = (color[2], color[1], color[0])
                 time.sleep(1)
                 success.empty()
+                print("color:{}".format(color))
                 if len(before_pdf_file) == len(after_pdf_file):
+                    print("success len")
                     num = 0
                     bar = st.progress(0, text="Loading PDF File...")
                     before_temp_dir = tempfile.mkdtemp()
