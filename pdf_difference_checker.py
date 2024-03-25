@@ -23,7 +23,7 @@ def add_poppler_path():
 
 def pdf2images(k, pdf_path):
     print("pdf_path:{}".format(pdf_path))
-    pdfs = glob.glob(pdf_path + r"\*.pdf", recursive = False)
+    pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     print("pdfs:{}".format(pdfs))
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
@@ -53,7 +53,7 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold):
     before_jpg_files = glob.glob(before_pdf_path + r"/before_pdf_img/*.jpg", recursive = False)
     after_jpg_files = glob.glob(after_pdf_path + r"/after_pdf_img/*.jpg", recursive = False)
     
-    result_folder = Path(after_pdf_path + r"\result_folder")
+    result_folder = Path(after_pdf_path + r"/result_folder")
     result_folder.mkdir(exist_ok = True)
 
     #try:
