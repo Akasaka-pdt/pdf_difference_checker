@@ -147,15 +147,20 @@ def streamlit_main():
                     for l, b_pdf_file in enumerate(before_pdf_file):
                         before_pdf_path_temp = os.path.join(before_temp_dir, f"before_pdf_{l}.pdf")
                         before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
+                        print("before_pdf_path_temp:{}".format(before_pdf_path_temp))
                         with open(before_pdf_path_temp, "wb") as out:
                             out.write(b_pdf_file.getbuffer())
+                            print(out)
                     
                     after_temp_dir = tempfile.mkdtemp()
                     for m, a_pdf_file in enumerate(after_pdf_file):
                         after_pdf_path_temp = os.path.join(after_temp_dir, f"after_pdf_{m}.pdf")
                         after_file_dict[f"after_pdf_{m}"] = str(a_pdf_file.name.replace(".pdf", ""))
+                        print("after_pdf_path_temp:{}".format(after_pdf_path_temp))
                         with open(after_pdf_path_temp, "wb") as out:
                             out.write(a_pdf_file.getbuffer())
+                            print(out)
+                    
                     bar = bar.progress(10, text="Converting the PDF to JPEG...")
                     pdf2images(0, before_temp_dir)
                     time.sleep(1)
