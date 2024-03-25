@@ -22,6 +22,8 @@ def add_poppler_path():
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
+    print("num:{}".format(k))
+    print("pdf_path:{}".format(pdf_path))
     pdfs = glob.glob(pdf_path + r"\*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
@@ -31,6 +33,7 @@ def pdf2images(k, pdf_path):
         print_text = "突き合わせ先"
     else:
         pass
+    print("output_dir:{}".format(output_dir))
     output_dir.mkdir(exist_ok = True)
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
