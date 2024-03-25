@@ -22,9 +22,7 @@ def add_poppler_path():
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
-    print("pdf_path:{}".format(pdf_path))
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
-    print("pdfs:{}".format(pdfs))
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
         print_text = "突き合わせ元"
@@ -33,12 +31,10 @@ def pdf2images(k, pdf_path):
         print_text = "突き合わせ先"
     else:
         pass
-    print("output_dir:{}".format(output_dir))
     output_dir.mkdir(exist_ok = True)
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
-        print(filename)
         pages = convert_from_path(str(pdf) , dpi = 200)
         print()
         print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
@@ -127,13 +123,6 @@ def streamlit_main():
     else:
         if st.button("突き合わせ開始"):
             try:
-                if before_pdf_file is not None and after_pdf_file is not None:
-                    print("before_pdf_file: {} ({} bytes)".format(before_pdf_file[0].name, before_pdf_file[0].size))
-                    print("after_pdf_file: {} ({} bytes)".format(after_pdf_file[0].name, after_pdf_file[0].size))
-                    print("color: {}".format(color))
-                    print("bold: {}".format(bold))
-                else:
-                    print("No files have been uploaded.")
                 success = st.empty()
                 top_list = st.empty()
                 success.success("File Upload Successfully!")
@@ -248,8 +237,6 @@ def streamlit_main():
                     shutil.rmtree(after_temp_dir)
                 except:
                     pass
-                
-
 
 def main():
     st.set_page_config(
