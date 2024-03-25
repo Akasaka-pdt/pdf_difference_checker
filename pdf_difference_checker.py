@@ -17,7 +17,7 @@ import io
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 def add_poppler_path():
-    poppler_dir = Path(__file__).parent.resolve() / "poppler"
+    poppler_dir = Path(__file__).parent.resolve() / "poppler/Library/bin"
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
     print(os.environ["PATH"])  # PATHを出力
     
