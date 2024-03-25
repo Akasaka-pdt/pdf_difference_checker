@@ -119,20 +119,20 @@ def streamlit_main():
     bold = st.sidebar.slider(
         "差分を囲う線の太さ", 0, 10, 3)
     st.sidebar.divider()
-    if before_pdf_file is not None and after_pdf_file is not None:
-        print("before_pdf_file: {} ({} bytes)".format(before_pdf_file[0].name, before_pdf_file[0].size))
-        print("after_pdf_file: {} ({} bytes)".format(after_pdf_file[0].name, after_pdf_file[0].size))
-        print("color: {}".format(color))
-        print("bold: {}".format(bold))
-    else:
-        print("No files have been uploaded.")
-
+    
     if len(before_pdf_file) == 0 or len(after_pdf_file) == 0:
         st.warning("突き合わせ元と突き合わせ先のpdfファイルのページ数と縦横のサイズが同じことを確認の上，アップロードをしてください。", icon="⚠️")
         st.warning("色の差分チェックは苦手です。ご了承ください。", icon="⚠️")
     else:
         if st.button("突き合わせ開始"):
             try:
+                if before_pdf_file is not None and after_pdf_file is not None:
+                    print("before_pdf_file: {} ({} bytes)".format(before_pdf_file[0].name, before_pdf_file[0].size))
+                    print("after_pdf_file: {} ({} bytes)".format(after_pdf_file[0].name, after_pdf_file[0].size))
+                    print("color: {}".format(color))
+                    print("bold: {}".format(bold))
+                else:
+                    print("No files have been uploaded.")
                 success = st.empty()
                 top_list = st.empty()
                 success.success("File Upload Successfully!")
