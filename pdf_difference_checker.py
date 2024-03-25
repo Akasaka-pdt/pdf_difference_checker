@@ -166,7 +166,6 @@ def streamlit_main():
                     if result_folder == "error":
                         pass
                     else:
-                        n = 0
                         before_jpg_files = glob.glob(before_temp_dir + r"/before_pdf_img/*.jpg", recursive = False)
                         after_jpg_files = glob.glob(after_temp_dir + r"/after_pdf_img/*.jpg", recursive = False)
                         while True:
