@@ -17,7 +17,7 @@ import io
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 def add_poppler_path():
-    poppler_dir = "/path/to/poppler"  # popplerのインストールディレクトリに置き換えてください
+    poppler_dir = "./poppler"  # popplerのインストールディレクトリに置き換えてください
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
