@@ -22,6 +22,7 @@ def add_poppler_path():
     os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
+    print("pdf_path:{}".format(pdf_path))
     pdfs = glob.glob(pdf_path + r"\*.pdf", recursive = False)
     print("pdfs:{}".format(pdfs))
     if k == 0:
@@ -144,6 +145,7 @@ def streamlit_main():
                     num = 0
                     bar = st.progress(0, text="Loading PDF File...")
                     before_temp_dir = tempfile.mkdtemp()
+                    print("before_temp_dir:{}".format(before_temp_dir))
                     for l, b_pdf_file in enumerate(before_pdf_file):
                         before_pdf_path_temp = os.path.join(before_temp_dir, f"before_pdf_{l}.pdf")
                         before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
@@ -153,6 +155,7 @@ def streamlit_main():
                             print(out)
                     
                     after_temp_dir = tempfile.mkdtemp()
+                    print("after_temp_dir:{}".format(after_temp_dir))
                     for m, a_pdf_file in enumerate(after_pdf_file):
                         after_pdf_path_temp = os.path.join(after_temp_dir, f"after_pdf_{m}.pdf")
                         after_file_dict[f"after_pdf_{m}"] = str(a_pdf_file.name.replace(".pdf", ""))
