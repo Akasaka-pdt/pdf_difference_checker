@@ -99,7 +99,7 @@ def make_check_filekey(key_file):
     return filekey
 
 def streamlit_main():
-    urrent_directory = os.getcwd()
+    current_directory = os.getcwd()
     
     # ディレクトリ内のファイル・フォルダ一覧を取得
     files_and_folders = os.listdir(current_directory)
