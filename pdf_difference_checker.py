@@ -19,7 +19,7 @@ before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; di
 
 def pdf2images(k, pdf_path):
     current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler')
+    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
@@ -101,8 +101,9 @@ def make_check_filekey(key_file):
     return filekey
 
 def streamlit_main():
+    os.environ.clear()
     current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler')
+    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
     os.environ["PATH"] += os.pathsep + poppler_path
     st.write(os.environ['PATH'])
 
