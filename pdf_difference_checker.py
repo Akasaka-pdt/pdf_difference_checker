@@ -16,7 +16,7 @@ import io
 
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
-poppler_dir = Path(__file__).parent.resolve() / "poppler/library/bin"
+poppler_dir = "poppler/library/bin"
 os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
