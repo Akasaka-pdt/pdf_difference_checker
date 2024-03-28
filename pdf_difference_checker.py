@@ -19,7 +19,7 @@ before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; di
 
 def pdf2images(k, pdf_path):
     current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
+    poppler_path = os.path.join(current_directory, 'poppler')
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
