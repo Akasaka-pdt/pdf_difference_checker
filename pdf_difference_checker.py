@@ -32,13 +32,13 @@ def pdf2images(k, pdf_path):
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
         pages = convert_from_bytes(open(pdf, 'rb').read())
-        st.write()
+
         st.write("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
         for i, page in tqdm.tqdm(enumerate(pages)):
             file_name = output_dir / "{}_{:004d}.jpg".format(filename, i + 1)
             page.save(str(file_name), "JPEG")
         st.write("------完了！------")
-       st.write ()
+
 
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold):
