@@ -32,13 +32,13 @@ def pdf2images(k, pdf_path):
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
         pages = convert_from_bytes(open(pdf, 'rb').read())
-        print()
-        print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
+        st.write()
+        st.write("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
         for i, page in tqdm.tqdm(enumerate(pages)):
             file_name = output_dir / "{}_{:004d}.jpg".format(filename, i + 1)
             page.save(str(file_name), "JPEG")
-        print("------完了！------")
-        print()
+        st.write("------完了！------")
+       st.write ()
 
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold):
@@ -49,7 +49,7 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold):
     result_folder.mkdir(exist_ok = True)
 
     #try:
-    print("------突き合わせ元と突き合わせ先の差分を集約中------")
+    st.write("------突き合わせ元と突き合わせ先の差分を集約中------")
     for j in tqdm.tqdm(range(0, len(before_jpg_files))):
         root, ext = os.path.splitext(after_jpg_files[j])
         a_dirname, a_filename = os.path.split(root)
@@ -80,7 +80,7 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold):
             else:
                 continue
         cv2.imwrite(str(result_folder / ("result_" + a_filename + ".jpg")), temp)
-    print("------完了!------")
+    st.write("------完了!------")
 
     return result_folder, difference
 
@@ -126,30 +126,30 @@ def streamlit_main():
                 color = (color[2], color[1], color[0])
                 time.sleep(1)
                 success.empty()
-                print("color:{}".format(color))
+                st.write("color:{}".format(color))
                 if len(before_pdf_file) == len(after_pdf_file):
-                    print("success len")
+                    st.write("success len")
                     num = 0
                     bar = st.progress(0, text="Loading PDF File...")
                     before_temp_dir = tempfile.mkdtemp()
-                    print("before_temp_dir:{}".format(before_temp_dir))
+                    st.write("before_temp_dir:{}".format(before_temp_dir))
                     for l, b_pdf_file in enumerate(before_pdf_file):
                         before_pdf_path_temp = os.path.join(before_temp_dir, f"before_pdf_{l}.pdf")
                         before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
-                        print("before_pdf_path_temp:{}".format(before_pdf_path_temp))
+                        st.write("before_pdf_path_temp:{}".format(before_pdf_path_temp))
                         with open(before_pdf_path_temp, "wb") as out:
                             out.write(b_pdf_file.getbuffer())
-                            print(out)
+                            st.write(out)
                     
                     after_temp_dir = tempfile.mkdtemp()
-                    print("after_temp_dir:{}".format(after_temp_dir))
+                    st.write("after_temp_dir:{}".format(after_temp_dir))
                     for m, a_pdf_file in enumerate(after_pdf_file):
                         after_pdf_path_temp = os.path.join(after_temp_dir, f"after_pdf_{m}.pdf")
                         after_file_dict[f"after_pdf_{m}"] = str(a_pdf_file.name.replace(".pdf", ""))
-                        print("after_pdf_path_temp:{}".format(after_pdf_path_temp))
+                        st.write("after_pdf_path_temp:{}".format(after_pdf_path_temp))
                         with open(after_pdf_path_temp, "wb") as out:
                             out.write(a_pdf_file.getbuffer())
-                            print(out)
+                            st.write(out)
                     
                     bar = bar.progress(10, text="Converting the PDF to JPEG...")
                     pdf2images(0, before_temp_dir)
@@ -228,7 +228,7 @@ def streamlit_main():
                     st.error("アップロードされているファイルの数が等しくありません。ご確認ください。", icon="🚨")
 
             except Exception as e:
-                print(e)
+                st.write(e)
                 try :
                     shutil.rmtree(before_temp_dir)
                     shutil.rmtree(after_temp_dir)
