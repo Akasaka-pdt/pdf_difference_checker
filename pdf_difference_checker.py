@@ -102,7 +102,7 @@ def make_check_filekey(key_file):
 
 def streamlit_main():
     current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
+    poppler_path = os.path.join(current_directory, 'poppler')
     os.environ["PATH"] += os.pathsep + poppler_path
     st.write(os.environ['PATH'])
 
