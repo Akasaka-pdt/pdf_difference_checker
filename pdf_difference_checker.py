@@ -18,7 +18,6 @@ import io
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 
 def pdf2images(k, pdf_path):
-    poppler_path = os.getenv("/mount/src/pdf_difference_checker/poppler/Library/bin")
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
