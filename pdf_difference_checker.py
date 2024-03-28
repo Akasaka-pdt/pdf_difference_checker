@@ -17,13 +17,10 @@ import io
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 def add_poppler_path():
-    # Get the current PATH
     current_path = os.environ.get('PATH')
-    # Define the path to the poppler bin directory
     poppler_bin_path = os.path.join(os.getcwd(), 'poppler/Library/bin')
-    # Add the poppler bin directory to the PATH
     os.environ['PATH'] = poppler_bin_path + os.pathsep + current_path
-    print(os.environ["PATH"])  # PATHを出力
+    print(os.environ["PATH"]) 
     
 def pdf2images(k, pdf_path):
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
