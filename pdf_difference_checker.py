@@ -3,7 +3,7 @@ from streamlit_image_comparison import image_comparison
 
 import os
 from pathlib import Path
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes
 import glob
 import cv2
 import tqdm
@@ -32,7 +32,7 @@ def pdf2images(k, pdf_path):
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
-        pages = convert_from_path(open(pdf, 'rb').read())
+        pages = convert_from_bytes(open(pdf, 'rb').read())
         print()
         print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
         for i, page in tqdm.tqdm(enumerate(pages)):
