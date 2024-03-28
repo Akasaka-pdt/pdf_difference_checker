@@ -18,6 +18,8 @@ import io
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 
 def pdf2images(k, pdf_path):
+    current_directory = os.getcwd()       
+    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
@@ -31,7 +33,7 @@ def pdf2images(k, pdf_path):
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
-        pages = convert_from_bytes(open(pdf, 'rb').read())
+        pages = convert_from_bytes(open(pdf, 'rb').read(), poppler_path = poppler_path)
 
         st.write("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
         for i, page in tqdm.tqdm(enumerate(pages)):
