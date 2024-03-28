@@ -244,7 +244,6 @@ def main():
         page_icon = ":file_cabinet:",
         initial_sidebar_state="expanded"
     )
-    add_poppler_path()
     streamlit_main()
 
 if __name__ == "__main__":
