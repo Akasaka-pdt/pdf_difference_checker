@@ -16,10 +16,10 @@ import io
 
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
+poppler_dir = Path(__file__).parent.resolve() / "poppler/library/bin"
+os.environ["PATH"] += os.pathsep + str(poppler_dir)
 
 def pdf2images(k, pdf_path):
-    current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
     pdfs = glob.glob(pdf_path + r"/*.pdf", recursive = False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
@@ -100,15 +100,7 @@ def make_check_filekey(key_file):
     filekey = "_".join(filename_del[:3])
     return filekey
 
-def streamlit_main():
-    current_directory = os.getcwd()       
-    poppler_path = os.path.join(current_directory, 'poppler/Library/bin')
-    os.environ["PATH"] += os.pathsep + poppler_path
-    st.write(os.environ['PATH'])
-
-
-
-    
+def streamlit_main():  
     st.title(":hammer_and_wrench: pdf difference checker :hammer_and_wrench:")
     st.divider()
 
