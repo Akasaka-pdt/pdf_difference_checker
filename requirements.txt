@@ -4,4 +4,3 @@ pdf2image
 opencv-python-headless
 tqdm
 Pillow
-poppler
