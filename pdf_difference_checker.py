@@ -99,6 +99,19 @@ def make_check_filekey(key_file):
     return filekey
 
 def streamlit_main():
+    urrent_directory = os.getcwd()
+    
+    # ディレクトリ内のファイル・フォルダ一覧を取得
+    files_and_folders = os.listdir(current_directory)
+    
+    # 結果を表示
+    for item in files_and_folders:
+        st.write(item)
+
+
+
+
+    
     st.title(":hammer_and_wrench: pdf difference checker :hammer_and_wrench:")
     st.divider()
 
