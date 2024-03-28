@@ -17,9 +17,7 @@ import io
 
 before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
 def add_poppler_path():
-    current_path = os.environ.get('PATH')
-    poppler_bin_path = os.path.join(os.getcwd(), 'poppler/Library/bin')
-    os.environ['PATH'] = poppler_bin_path + os.pathsep + current_path
+    os.environ['PATH'] = "/mount/src/pdf_difference_checker/poppler/Library/bin"
     print(os.environ["PATH"]) 
     
 def pdf2images(k, pdf_path):
