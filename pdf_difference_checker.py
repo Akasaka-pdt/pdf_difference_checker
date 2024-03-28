@@ -33,7 +33,7 @@ def pdf2images(k, pdf_path):
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
         dirname, filename = os.path.split(root)
-        pages = convert_from_bytes(open(pdf, 'rb').read(), poppler_path = poppler_path)
+        pages = convert_from_bytes(str(pdf) , dpi = 200)
 
         st.write("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
         for i, page in tqdm.tqdm(enumerate(pages)):
