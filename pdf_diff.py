@@ -233,7 +233,7 @@ def streamlit_main():
                         shutil.rmtree(after_temp_dir)
 
                 else:
-                    st.error("アップロードされているファイルの数が等しくありませ��。ご確認ください。", icon="🚨")
+                    st.error("アップロードされているファイルの数が等しくありません。ご確認ください。", icon="🚨")
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
