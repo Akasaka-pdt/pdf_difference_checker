@@ -21,7 +21,6 @@ diff_link = []
 diff_link_name = []
 
 def pdf2images(k, pdf_path, bar, base_num):
-    st.write("pdf2images function called")
     pdfs = glob.glob(str(pdf_path / "*.pdf"), recursive=False)
     if len(pdfs) == 0:
         st.error("No PDF files found in the specified directory.")
@@ -63,7 +62,6 @@ def pdf2images(k, pdf_path, bar, base_num):
     return bar
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
-    st.write("find_diff function called")
     before_jpg_files = glob.glob(str(before_pdf_path / "before_pdf_img/*.jpg"), recursive=False)
     after_jpg_files = glob.glob(str(after_pdf_path / "after_pdf_img/*.jpg"), recursive=False)
 
