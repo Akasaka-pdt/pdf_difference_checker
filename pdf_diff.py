@@ -22,16 +22,16 @@ diff_link_name = []
 
 def pdf2images(k, pdf_path, bar, base_num):
     st.write("pdf2images function called")
-    pdfs = glob.glob(pdf_path + r"\*.pdf", recursive=False)
+    pdfs = glob.glob(str(pdf_path / "*.pdf"), recursive=False)
     if len(pdfs) == 0:
         st.error("No PDF files found in the specified directory.")
         return bar
 
     if k == 0:
-        output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
+        output_dir = pdf_path / "before_pdf_img"
         print_text = "突き合わせ元"
     elif k == 1:
-        output_dir = Path(r"{}/after_pdf_img".format(pdf_path))
+        output_dir = pdf_path / "after_pdf_img"
         print_text = "突き合わせ先"
     else:
         pass
@@ -64,14 +64,14 @@ def pdf2images(k, pdf_path, bar, base_num):
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
     st.write("find_diff function called")
-    before_jpg_files = glob.glob(before_pdf_path + r"/before_pdf_img/*.jpg", recursive=False)
-    after_jpg_files = glob.glob(after_pdf_path + r"/after_pdf_img/*.jpg", recursive=False)
+    before_jpg_files = glob.glob(str(before_pdf_path / "before_pdf_img/*.jpg"), recursive=False)
+    after_jpg_files = glob.glob(str(after_pdf_path / "after_pdf_img/*.jpg"), recursive=False)
 
     if len(before_jpg_files) == 0 or len(after_jpg_files) == 0:
         st.error("No JPEG files found in the specified directories.")
         return "error", [], bar
 
-    result_folder = Path(after_pdf_path + r"\result_folder")
+    result_folder = after_pdf_path / "result_folder"
     result_folder.mkdir(exist_ok=True)
 
     pls_bar = 30 / len(before_jpg_files)
@@ -152,16 +152,16 @@ def streamlit_main():
                 if len(before_pdf_file) == len(after_pdf_file):
                     num = 0
                     bar = st.progress(0, text="Loading PDF File...")
-                    before_temp_dir = tempfile.mkdtemp()
+                    before_temp_dir = Path(tempfile.mkdtemp())
                     for l, b_pdf_file in enumerate(before_pdf_file):
-                        before_pdf_path_temp = os.path.join(before_temp_dir, f"before_pdf_{l}.pdf")
+                        before_pdf_path_temp = before_temp_dir / f"before_pdf_{l}.pdf"
                         before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
                         with open(before_pdf_path_temp, "wb") as out:
                             out.write(b_pdf_file.getbuffer())
 
-                    after_temp_dir = tempfile.mkdtemp()
+                    after_temp_dir = Path(tempfile.mkdtemp())
                     for m, a_pdf_file in enumerate(after_pdf_file):
-                        after_pdf_path_temp = os.path.join(after_temp_dir, f"after_pdf_{m}.pdf")
+                        after_pdf_path_temp = after_temp_dir / f"after_pdf_{m}.pdf"
                         after_file_dict[f"after_pdf_{m}"] = str(a_pdf_file.name.replace(".pdf", ""))
                         with open(after_pdf_path_temp, "wb") as out:
                             out.write(a_pdf_file.getbuffer())
@@ -177,10 +177,10 @@ def streamlit_main():
                         pass
                     else:
                         n = 0
-                        before_jpg_files = glob.glob(before_temp_dir + r"/before_pdf_img/*.jpg", recursive=False)
-                        after_jpg_files = glob.glob(after_temp_dir + r"/after_pdf_img/*.jpg", recursive=False)
+                        before_jpg_files = glob.glob(str(before_temp_dir / "before_pdf_img/*.jpg"), recursive=False)
+                        after_jpg_files = glob.glob(str(after_temp_dir / "after_pdf_img/*.jpg"), recursive=False)
                         while True:
-                            result_jpgs = glob.glob(os.path.join(result_folder, "*.jpg"), recursive=False)
+                            result_jpgs = glob.glob(str(result_folder / "*.jpg"), recursive=False)
                             if len(result_jpgs) != len(after_jpg_files):
                                 time.sleep(1)
                             else:
@@ -235,7 +235,7 @@ def streamlit_main():
                         shutil.rmtree(after_temp_dir)
 
                 else:
-                    st.error("アップロードされているファイルの数が等しくありません。ご確認ください。", icon="🚨")
+                    st.error("アップロードされているファイルの数が等しくありませ��。ご確認ください。", icon="🚨")
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
