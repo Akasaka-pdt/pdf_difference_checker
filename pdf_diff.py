@@ -23,6 +23,10 @@ diff_link_name = []
 def pdf2images(k, pdf_path, bar, base_num):
     st.write("pdf2images function called")
     pdfs = glob.glob(pdf_path + r"\*.pdf", recursive=False)
+    if len(pdfs) == 0:
+        st.error("No PDF files found in the specified directory.")
+        return bar
+
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
         print_text = "突き合わせ元"
@@ -62,6 +66,10 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
     st.write("find_diff function called")
     before_jpg_files = glob.glob(before_pdf_path + r"/before_pdf_img/*.jpg", recursive=False)
     after_jpg_files = glob.glob(after_pdf_path + r"/after_pdf_img/*.jpg", recursive=False)
+
+    if len(before_jpg_files) == 0 or len(after_jpg_files) == 0:
+        st.error("No JPEG files found in the specified directories.")
+        return "error", [], bar
 
     result_folder = Path(after_pdf_path + r"\result_folder")
     result_folder.mkdir(exist_ok=True)
