@@ -1,0 +1,6 @@
+streamlit
+streamlit-image-comparison
+opencv-python-headless
+Pillow
+PyMuPDF
+tqdm
