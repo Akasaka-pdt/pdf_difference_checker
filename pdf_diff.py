@@ -12,12 +12,17 @@ import shutil
 from PIL import ImageColor, Image
 import zipfile
 import io
-import fitz 
+import fitz
 
-before_file_dict = {}; after_file_dict = {}; difference = []; diff_link = []; diff_link_name = [];
+before_file_dict = {}
+after_file_dict = {}
+difference = []
+diff_link = []
+diff_link_name = []
 
 def pdf2images(k, pdf_path, bar, base_num):
-    pdfs = glob.glob(pdf_path + r"\*.pdf", recursive = False)
+    st.write("pdf2images function called")
+    pdfs = glob.glob(pdf_path + r"\*.pdf", recursive=False)
     if k == 0:
         output_dir = Path(r"{}/before_pdf_img".format(pdf_path))
         print_text = "突き合わせ元"
@@ -26,9 +31,9 @@ def pdf2images(k, pdf_path, bar, base_num):
         print_text = "突き合わせ先"
     else:
         pass
-    output_dir.mkdir(exist_ok = True)
+    output_dir.mkdir(exist_ok=True)
 
-    pls_bar = 30 / len(pdfs) 
+    pls_bar = 30 / len(pdfs)
     bar_num = base_num
     for pdf in pdfs:
         root, ext = os.path.splitext(pdf)
@@ -39,7 +44,7 @@ def pdf2images(k, pdf_path, bar, base_num):
 
         print()
         print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
-        
+
         num = 1
         for i in tqdm.tqdm(range(len(doc))):
             page = doc.load_page(i)
@@ -51,16 +56,15 @@ def pdf2images(k, pdf_path, bar, base_num):
         print("------完了！------")
         print()
 
-
-
     return bar
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
-    before_jpg_files = glob.glob(before_pdf_path + r"/before_pdf_img/*.jpg", recursive = False)
-    after_jpg_files = glob.glob(after_pdf_path + r"/after_pdf_img/*.jpg", recursive = False)
-    
+    st.write("find_diff function called")
+    before_jpg_files = glob.glob(before_pdf_path + r"/before_pdf_img/*.jpg", recursive=False)
+    after_jpg_files = glob.glob(after_pdf_path + r"/after_pdf_img/*.jpg", recursive=False)
+
     result_folder = Path(after_pdf_path + r"\result_folder")
-    result_folder.mkdir(exist_ok = True)
+    result_folder.mkdir(exist_ok=True)
 
     pls_bar = 30 / len(before_jpg_files)
     bar_num = 70
@@ -94,7 +98,7 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
             else:
                 continue
         cv2.imwrite(str(result_folder / ("result_" + a_filename + ".jpg")), temp)
-        
+
         bar_num += pls_bar
         bar = bar.progress(int(bar_num), text="Converting the PDF to JPEG...")
 
@@ -114,9 +118,9 @@ def streamlit_main():
     st.divider()
 
     st.sidebar.title("Upload")
-    before_pdf_file = st.sidebar.file_uploader("突き合わせ元のpdf", accept_multiple_files=True, type = "pdf")
+    before_pdf_file = st.sidebar.file_uploader("突き合わせ元のpdf", accept_multiple_files=True, type="pdf")
     st.sidebar.title("")
-    after_pdf_file = st.sidebar.file_uploader("突き合わせ先のpdf", accept_multiple_files=True, type = "pdf")
+    after_pdf_file = st.sidebar.file_uploader("突き合わせ先のpdf", accept_multiple_files=True, type="pdf")
     st.sidebar.divider()
     st.sidebar.title("Options")
     color = st.sidebar.color_picker("マーキングする色", "#00ff00")
@@ -146,7 +150,7 @@ def streamlit_main():
                         before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
                         with open(before_pdf_path_temp, "wb") as out:
                             out.write(b_pdf_file.getbuffer())
-                    
+
                     after_temp_dir = tempfile.mkdtemp()
                     for m, a_pdf_file in enumerate(after_pdf_file):
                         after_pdf_path_temp = os.path.join(after_temp_dir, f"after_pdf_{m}.pdf")
@@ -165,8 +169,8 @@ def streamlit_main():
                         pass
                     else:
                         n = 0
-                        before_jpg_files = glob.glob(before_temp_dir + r"/before_pdf_img/*.jpg", recursive = False)
-                        after_jpg_files = glob.glob(after_temp_dir + r"/after_pdf_img/*.jpg", recursive = False)
+                        before_jpg_files = glob.glob(before_temp_dir + r"/before_pdf_img/*.jpg", recursive=False)
+                        after_jpg_files = glob.glob(after_temp_dir + r"/after_pdf_img/*.jpg", recursive=False)
                         while True:
                             result_jpgs = glob.glob(os.path.join(result_folder, "*.jpg"), recursive=False)
                             if len(result_jpgs) != len(after_jpg_files):
@@ -179,7 +183,7 @@ def streamlit_main():
                         old_a_file_key = ""
                         zip_io = io.BytesIO()
                         with zipfile.ZipFile(zip_io, "w") as zip_file:
-                            st.toast("表示中…", icon = "🏃‍♂️")
+                            st.toast("表示中…", icon="🏃‍♂️")
                             for i in range(0, len(result_jpgs)):
                                 before_file_key = make_check_filekey(before_jpg_files[i])
                                 after_file_key = make_check_filekey(after_jpg_files[i])
@@ -187,21 +191,21 @@ def streamlit_main():
                                 if old_a_file_key != str(after_file_dict[after_file_key]):
                                     if old_a_file_key != "":
                                         st.divider()
-                                    
+
                                 if difference[i] == "":
                                     st.write("")
                                 else:
                                     st.header(":bell: :red[{}]".format(difference[i]))
-                                
+
                                 image_comparison(
-                                    img1 = before_jpg_files[i],
-                                    img2 = result_jpgs[i],
-                                    label1 = before_file_dict[before_file_key],
-                                    label2 = after_file_dict[after_file_key],
-                                    width = 700,
-                                    starting_position = 1
+                                    img1=before_jpg_files[i],
+                                    img2=result_jpgs[i],
+                                    label1=before_file_dict[before_file_key],
+                                    label2=after_file_dict[after_file_key],
+                                    width=700,
+                                    starting_position=1
                                 )
-                                
+
                                 with open(result_jpgs[i], "rb") as img_file:
                                     zip_file.writestr("result_{}_{:003d}.jpg".format(after_file_dict[after_file_key], i), img_file.read())
 
@@ -226,8 +230,8 @@ def streamlit_main():
                     st.error("アップロードされているファイルの数が等しくありません。ご確認ください。", icon="🚨")
 
             except Exception as e:
-                print(e)
-                try :
+                st.error(f"An error occurred: {e}")
+                try:
                     shutil.rmtree(before_temp_dir)
                     shutil.rmtree(after_temp_dir)
                 except:
@@ -235,8 +239,8 @@ def streamlit_main():
 
 def main():
     st.set_page_config(
-        page_title = "Pdf Difference Checker",
-        page_icon = ":file_cabinet:",
+        page_title="Pdf Difference Checker",
+        page_icon=":file_cabinet:",
         initial_sidebar_state="expanded"
     )
     streamlit_main()
