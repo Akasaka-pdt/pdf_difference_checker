@@ -46,7 +46,7 @@ def pdf2images(k, pdf_path, bar, base_num, change_scale):
         change_num = pls_bar / len(doc)
 
         print()
-        print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename.split("_")[2]) + 1))
+        print("-----{}の{}つ目のPDFをjpegに変換中-----".format(print_text, int(filename) + 1))
 
         num = 1
         for i in tqdm.tqdm(range(len(doc))):
@@ -120,7 +120,7 @@ def make_check_filekey(key_file):
     root, ext = os.path.splitext(key_file)
     dirname, filename = os.path.split(root)
     filename_del = filename.split("_")
-    filekey = "_".join(filename_del[:3])
+    filekey = filename_del[0]
     return filekey
 
 def streamlit_main():
@@ -160,15 +160,15 @@ def streamlit_main():
                     bar = st.progress(0, text="Loading PDF File...")
                     before_temp_dir = Path(tempfile.mkdtemp())
                     for l, b_pdf_file in enumerate(before_pdf_file):
-                        before_pdf_path_temp = before_temp_dir / f"before_pdf_{l}.pdf"
-                        before_file_dict[f"before_pdf_{l}"] = str(b_pdf_file.name.replace(".pdf", ""))
+                        before_pdf_path_temp = before_temp_dir / f"{l:003}.pdf"
+                        before_file_dict[f"{l:003}"] = str(b_pdf_file.name.replace(".pdf", ""))
                         with open(before_pdf_path_temp, "wb") as out:
                             out.write(b_pdf_file.getbuffer())
 
                     after_temp_dir = Path(tempfile.mkdtemp())
                     for m, a_pdf_file in enumerate(after_pdf_file):
-                        after_pdf_path_temp = after_temp_dir / f"after_pdf_{m}.pdf"
-                        after_file_dict[f"after_pdf_{m}"] = str(a_pdf_file.name.replace(".pdf", ""))
+                        after_pdf_path_temp = after_temp_dir / f"{m:003}.pdf"
+                        after_file_dict[f"{m:003}"] = str(a_pdf_file.name.replace(".pdf", ""))
                         with open(after_pdf_path_temp, "wb") as out:
                             out.write(a_pdf_file.getbuffer())
                     bar = bar.progress(10, text="Converting the PDF to JPEG...")
