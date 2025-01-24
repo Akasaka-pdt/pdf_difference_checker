@@ -66,8 +66,8 @@ def pdf2images(k, pdf_path, bar, base_num, change_scale):
     return bar
 
 def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
-    before_jpg_files = glob.glob(str(before_pdf_path / "before_pdf_img/*.jpg"), recursive=False)
-    after_jpg_files = glob.glob(str(after_pdf_path / "after_pdf_img/*.jpg"), recursive=False)
+    before_jpg_files = sorted(glob.glob(str(before_pdf_path / "before_pdf_img/*.jpg"), recursive=False))
+    after_jpg_files = sorted(glob.glob(str(after_pdf_path / "after_pdf_img/*.jpg"), recursive=False))
 
     if len(before_jpg_files) == 0 or len(after_jpg_files) == 0:
         st.error("No JPEG files found in the specified directories.")
@@ -107,7 +107,7 @@ def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
                 cv2.rectangle(temp, (x-2, y-2), (x + width + 2, y + height + 2), color, bold)
             else:
                 continue
-        cv2.imwrite(str(result_folder / ("result_" + a_filename + ".jpg")), temp)
+        cv2.imwrite(str(result_folder / (a_filename + ".jpg")), temp)
 
         bar_num += pls_bar
         bar = bar.progress(int(bar_num), text="Converting the PDF to JPEG...")
@@ -183,8 +183,8 @@ def streamlit_main():
                         pass
                     else:
                         n = 0
-                        before_jpg_files = glob.glob(str(before_temp_dir / "before_pdf_img/*.jpg"), recursive=False)
-                        after_jpg_files = glob.glob(str(after_temp_dir / "after_pdf_img/*.jpg"), recursive=False)
+                        before_jpg_files = sorted(glob.glob(str(before_temp_dir / "before_pdf_img/*.jpg"), recursive=False))
+                        after_jpg_files = sorted(glob.glob(str(after_temp_dir / "after_pdf_img/*.jpg"), recursive=False))
                         while True:
                             result_jpgs = glob.glob(str(result_folder / "*.jpg"), recursive=False)
                             if len(result_jpgs) != len(after_jpg_files):
