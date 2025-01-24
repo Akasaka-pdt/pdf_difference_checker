@@ -186,7 +186,7 @@ def streamlit_main():
                         before_jpg_files = sorted(glob.glob(str(before_temp_dir / "before_pdf_img/*.jpg"), recursive=False))
                         after_jpg_files = sorted(glob.glob(str(after_temp_dir / "after_pdf_img/*.jpg"), recursive=False))
                         while True:
-                            result_jpgs = glob.glob(str(result_folder / "*.jpg"), recursive=False)
+                            result_jpgs = sorted(glob.glob(str(result_folder / "*.jpg"), recursive=False))
                             if len(result_jpgs) != len(after_jpg_files):
                                 time.sleep(1)
                             else:
