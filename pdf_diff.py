@@ -20,7 +20,7 @@ difference = []
 diff_link = []
 diff_link_name = []
 
-def pdf2images(k, pdf_path, bar, base_num):
+def pdf2images(k, pdf_path, bar, base_num, change_scale):
     pdfs = glob.glob(str(pdf_path / "*.pdf"), recursive=False)
     if len(pdfs) == 0:
         st.error("No PDF files found in the specified directory.")
@@ -52,6 +52,10 @@ def pdf2images(k, pdf_path, bar, base_num):
         for i in tqdm.tqdm(range(len(doc))):
             page = doc.load_page(i)
             pix = page.get_pixmap(dpi=200)
+
+            if change_scale == "GRAY":
+                pix = fitz.Pixmap(fitz.csGRAY, pix)
+
             file_name = output_dir / "{}_{:004d}.jpg".format(filename, i + 1)
             pix.save(str(file_name))
             bar_num += change_num * num
@@ -129,6 +133,10 @@ def streamlit_main():
     after_pdf_file = st.sidebar.file_uploader("突き合わせ先のpdf", accept_multiple_files=True, type="pdf")
     st.sidebar.divider()
     st.sidebar.title("Options")
+    change_scale = st.sidebar.selectbox(
+        "差分チェックをするスケール",
+        ("RGB", "GRAY")
+    )
     color = st.sidebar.color_picker("マーキングする色", "#00ff00")
     bold = st.sidebar.slider(
         "差分を囲う線の太さ", 0, 10, 3)
@@ -164,10 +172,10 @@ def streamlit_main():
                         with open(after_pdf_path_temp, "wb") as out:
                             out.write(a_pdf_file.getbuffer())
                     bar = bar.progress(10, text="Converting the PDF to JPEG...")
-                    bar = pdf2images(0, before_temp_dir, bar, 10)
+                    bar = pdf2images(0, before_temp_dir, bar, 10, change_scale)
                     time.sleep(1)
                     bar = bar.progress(40, text="Converting the PDF to JPEG...")
-                    bar = pdf2images(1, after_temp_dir, bar, 40)
+                    bar = pdf2images(1, after_temp_dir, bar, 40, change_scale)
                     time.sleep(1)
                     bar = bar.progress(70, text="Converting the PDF to JPEG...")
                     result_folder, difference, bar = find_diff(before_temp_dir, after_temp_dir, color, bold, bar)
