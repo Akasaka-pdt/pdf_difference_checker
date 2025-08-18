@@ -1,0 +1,10 @@
+[server]
+# クロスサイトリクエストフォージェリ(XSRF)対策を有効化
+enableXsrfProtection = true
+
+# 他サイトからのクロスオリジンアクセスを禁止
+enableCORS = false
+
+[browser]
+# 匿名の利用状況データをStreamlit Inc.に送らない
+gatherUsageStats = false
