@@ -96,6 +96,14 @@ def compare_images(args):
     if img_ref is None or img_comp is None:
         return "Error: Could not read image", None, index
 
+    # --- ### サイズを統一する処理を追加 ### ---
+    # img_ref のサイズに img_comp を強制的に合わせます
+    if img_ref.shape != img_comp.shape:
+        # img_ref.shape は (高さ, 幅, チャンネル数)
+        height, width = img_ref.shape[:2]
+        img_comp = cv2.resize(img_comp, (width, height))
+    # ------------------------------------------
+
     temp = img_comp.copy()
 
     gray_img_ref = cv2.cvtColor(img_ref, cv2.COLOR_BGR2GRAY)
@@ -310,3 +318,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
