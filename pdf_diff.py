@@ -1,9 +1,7 @@
 import streamlit as st
 from streamlit_image_comparison import image_comparison
 
-import os
 from pathlib import Path
-import glob
 import cv2
 import tqdm
 import time
@@ -15,298 +13,545 @@ import io
 import fitz
 import concurrent.futures
 
-# Global variables (retained for compatibility with original structure)
-before_file_dict = {}
-after_file_dict = {}
 
-# Helper function for pdf2images to process one page in parallel
-def convert_page_to_image(args):
-    """Converts a single PDF page to a JPG image."""
-    pdf_file_path, output_dir, page_num, change_scale, pdf_filename = args
+def ensure_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def contour_is_significant(contour, min_width: int = 5, min_height: int = 5) -> bool:
+    x, y, w, h = cv2.boundingRect(contour)
+    return w > min_width and h > min_height
+
+
+def build_pdf_manifest(uploaded_files, base_dir: Path):
+    """
+    UploadされたPDFを保存し、PDF単位のmanifestを返す。
+    uploaded_files の順序をそのまま保持する。
+    """
+    manifest = []
+
+    for i, uploaded_pdf in enumerate(uploaded_files):
+        pdf_index = f"{i:03d}"
+        saved_path = base_dir / f"{pdf_index}.pdf"
+
+        with open(saved_path, "wb") as f:
+            f.write(uploaded_pdf.getbuffer())
+
+        manifest.append(
+            {
+                "pdf_index": pdf_index,
+                "display_name": Path(uploaded_pdf.name).stem,
+                "pdf_path": saved_path,
+                "upload_order": i,
+            }
+        )
+
+    return manifest
+
+
+def convert_single_pdf_to_images(args):
+    """
+    1つのPDFを全ページ画像化する。
+    スレッド内では Streamlit UI を触らず、結果だけ返す。
+    """
+    pdf_info, output_dir, change_scale = args
+
+    pdf_index = pdf_info["pdf_index"]
+    pdf_path = pdf_info["pdf_path"]
+    display_name = pdf_info["display_name"]
+    upload_order = pdf_info["upload_order"]
+
+    page_manifest = []
+    errors = []
+
     try:
-        doc = fitz.open(pdf_file_path)
-        page = doc.load_page(page_num)
-        pix = page.get_pixmap(dpi=200)
+        with fitz.open(pdf_path) as doc:
+            page_count = len(doc)
 
-        if change_scale == "GRAY":
-            pix = fitz.Pixmap(fitz.csGRAY, pix)
+            for page_num in range(page_count):
+                try:
+                    page = doc.load_page(page_num)
+                    pix = page.get_pixmap(dpi=200)
 
-        file_name = output_dir / f"{pdf_filename}_{page_num:004d}.jpg"
-        pix.save(str(file_name))
-        return True
+                    if change_scale == "GRAY":
+                        pix = fitz.Pixmap(fitz.csGRAY, pix)
+
+                    image_filename = f"{pdf_index}_{page_num:04d}.jpg"
+                    image_path = output_dir / image_filename
+                    pix.save(str(image_path))
+
+                    page_manifest.append(
+                        {
+                            "pdf_index": pdf_index,
+                            "display_name": display_name,
+                            "upload_order": upload_order,
+                            "page_num": page_num,
+                            "image_path": image_path,
+                            "image_filename": image_filename,
+                        }
+                    )
+                except Exception as e:
+                    errors.append(
+                        f"[{display_name}] page {page_num + 1} の変換に失敗しました: {e}"
+                    )
+
     except Exception as e:
-        st.error(f"Error converting page {page_num} of {pdf_filename}: {e}")
-        return False
+        errors.append(f"[{display_name}] PDFを開けませんでした: {e}")
 
-def pdf2images(k, pdf_path, bar, base_num, change_scale):
-    """Converts all PDFs in a directory to images in parallel."""
-    pdfs = glob.glob(str(pdf_path / "*.pdf"), recursive=False)
-    if not pdfs:
-        st.error("No PDF files found in the specified directory.")
-        return bar
+    return {
+        "pdf_index": pdf_index,
+        "display_name": display_name,
+        "upload_order": upload_order,
+        "pages": page_manifest,
+        "errors": errors,
+    }
 
-    if k == 0:
-        output_dir = pdf_path / "before_pdf_img"
-        print_text = "突き合わせ元"
-    else:  # k == 1
-        output_dir = pdf_path / "after_pdf_img"
-        print_text = "突き合わせ先"
-    
-    output_dir.mkdir(exist_ok=True)
 
-    tasks = []
-    total_pages = 0
-    for pdf in pdfs:
-        try:
-            doc = fitz.open(pdf)
-            pdf_filename, _ = os.path.splitext(os.path.basename(pdf))
-            total_pages += len(doc)
-            for i in range(len(doc)):
-                tasks.append((pdf, output_dir, i, change_scale, pdf_filename))
-        except Exception as e:
-            st.error(f"Could not open {pdf}: {e}")
+def pdf2images(
+    pdf_manifest,
+    output_dir: Path,
+    bar,
+    progress_start: int,
+    progress_span: int,
+    change_scale: str,
+    progress_text: str,
+):
+    """
+    PDF単位で並列変換する。
+    """
+    ensure_dir(output_dir)
 
-    if total_pages == 0:
-        return bar
+    if not pdf_manifest:
+        return [], [f"{progress_text}対象のPDFがありません。"], bar
 
-    bar_increment = 30 / total_pages
-    bar_num = base_num
-    
-    print(f"-----{print_text}のPDFをjpegに変換中-----")
+    results = []
+    errors = []
+
+    tasks = [(pdf_info, output_dir, change_scale) for pdf_info in pdf_manifest]
+    total = len(tasks)
+    completed = 0
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Using tqdm for console progress, st.progress for UI
-        future_to_task = {executor.submit(convert_page_to_image, task): task for task in tasks}
-        for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_task), total=len(tasks), desc=f"Converting {print_text}"):
-            if future.result():
-                bar_num += bar_increment
-                bar.progress(int(min(bar_num, base_num + 30)), text="PDFをJPEGに変換中...")
+        future_to_pdf = {
+            executor.submit(convert_single_pdf_to_images, task): task[0]
+            for task in tasks
+        }
 
-    print("------完了！------")
-    return bar
+        for future in tqdm.tqdm(
+            concurrent.futures.as_completed(future_to_pdf),
+            total=total,
+            desc=progress_text
+        ):
+            result = future.result()
+            results.append(result)
+            errors.extend(result["errors"])
 
-# Helper function for find_diff to process one image pair in parallel
-def compare_images(args):
-    """Compares two images and returns the difference status and result path."""
-    before_jpg_file, after_jpg_file, result_folder, color, bold, index = args
-    
-    _, a_filename = os.path.split(os.path.splitext(after_jpg_file)[0])
-    
-    img_ref = cv2.imread(before_jpg_file)
-    img_comp = cv2.imread(after_jpg_file)
-    if img_ref is None or img_comp is None:
-        return "Error: Could not read image", None, index
+            completed += 1
+            current_progress = progress_start + int(progress_span * completed / total)
+            bar.progress(min(current_progress, progress_start + progress_span), text=progress_text)
 
-    # --- ### サイズを統一する処理を追加 ### ---
-    # img_ref のサイズに img_comp を強制的に合わせます
-    if img_ref.shape != img_comp.shape:
-        # img_ref.shape は (高さ, 幅, チャンネル数)
-        height, width = img_ref.shape[:2]
-        img_comp = cv2.resize(img_comp, (width, height))
-    # ------------------------------------------
+    results.sort(key=lambda x: x["upload_order"])
 
-    temp = img_comp.copy()
+    return results, errors, bar
 
-    gray_img_ref = cv2.cvtColor(img_ref, cv2.COLOR_BGR2GRAY)
-    gray_img_comp = cv2.cvtColor(img_comp, cv2.COLOR_BGR2GRAY)
 
-    img_diff = cv2.absdiff(gray_img_ref, gray_img_comp)
-    _, img_bin = cv2.threshold(img_diff, 50, 255, 0)
-    img_bin = cv2.bitwise_and(img_bin, cv2.cvtColor(img_ref, cv2.COLOR_BGR2GRAY))
+def flatten_pages(pdf_results):
+    """
+    PDF結果を、アップロード順 → ページ順で1本のページ列にフラット化する。
+    """
+    flat_pages = []
 
-    contours, _ = cv2.findContours(img_bin, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-    has_diff = "There are differences" if any(cv2.boundingRect(c)[2] > 5 and cv2.boundingRect(c)[3] > 5 for c in contours) else ""
-    
-    if has_diff:
-        for contour in contours:
-            x, y, width, height = cv2.boundingRect(contour)
-            if width > 5 or height > 5:
-                cv2.rectangle(temp, (x - 2, y - 2), (x + width + 2, y + height + 2), color, bold)
+    ordered_results = sorted(pdf_results, key=lambda x: x["upload_order"])
 
-    result_path = str(result_folder / (a_filename + ".jpg"))
-    cv2.imwrite(result_path, temp)
-    
-    return has_diff, result_path, index
+    for pdf_result in ordered_results:
+        ordered_pages = sorted(pdf_result["pages"], key=lambda x: x["page_num"])
+        for page in ordered_pages:
+            flat_pages.append(page)
 
-def find_diff(before_pdf_path, after_pdf_path, color, bold, bar):
-    """Finds differences between all corresponding images in parallel."""
-    before_jpg_files = sorted(glob.glob(str(before_pdf_path / "before_pdf_img/*.jpg")))
-    after_jpg_files = sorted(glob.glob(str(after_pdf_path / "after_pdf_img/*.jpg")))
+    return flat_pages
 
-    if not before_jpg_files or not after_jpg_files:
-        st.error("JPEGファイルが見つかりません。")
-        return "error", [], bar
-    
-    if len(before_jpg_files) != len(after_jpg_files):
-        st.error("元ファイルと先ファイルのページ数が一致しません。")
-        return "error", [], bar
 
-    result_folder = after_pdf_path / "result_folder"
-    result_folder.mkdir(exist_ok=True)
+def build_page_pairs(before_results, after_results):
+    """
+    PDF単位ではなく、全PDFを通したページ列で対応付ける。
+    ファイル数が異なっていても、合計ページ数が同じなら比較可能。
+    """
+    errors = []
+    pairs = []
 
-    tasks = [(before_jpg_files[j], after_jpg_files[j], result_folder, color, bold, j) for j in range(len(before_jpg_files))]
-    
-    bar_increment = 30 / len(before_jpg_files)
-    bar_num = 70
-    
-    differences = [None] * len(before_jpg_files)
-    
-    print("------突き合わせ元と突き合わせ先の差分を集約中------")
+    before_pages = flatten_pages(before_results)
+    after_pages = flatten_pages(after_results)
+
+    if len(before_pages) != len(after_pages):
+        errors.append(
+            f"合計ページ数が一致しません。元は {len(before_pages)} ページ、先は {len(after_pages)} ページです。"
+        )
+        return pairs, errors
+
+    for global_page_index, (before_page, after_page) in enumerate(zip(before_pages, after_pages)):
+        pairs.append(
+            {
+                "global_page_index": global_page_index,
+                "before_pdf_index": before_page["pdf_index"],
+                "before_display_name": before_page["display_name"],
+                "before_page_num": before_page["page_num"],
+                "before_image_path": before_page["image_path"],
+                "after_pdf_index": after_page["pdf_index"],
+                "after_display_name": after_page["display_name"],
+                "after_page_num": after_page["page_num"],
+                "after_image_path": after_page["image_path"],
+            }
+        )
+
+    return pairs, errors
+
+
+def compare_single_image_pair(args):
+    """
+    1ページ分の画像差分比較。
+    スレッド内では UI を触らない。
+    """
+    pair_info, result_folder, color_bgr, bold = args
+
+    before_path = str(pair_info["before_image_path"])
+    after_path = str(pair_info["after_image_path"])
+    global_page_index = pair_info["global_page_index"]
+
+    result_filename = f"global_{global_page_index:04d}.jpg"
+    result_path = result_folder / result_filename
+
+    try:
+        img_ref = cv2.imread(before_path)
+        img_comp = cv2.imread(after_path)
+
+        if img_ref is None:
+            return {
+                "ok": False,
+                "error": (
+                    f"[{pair_info['before_display_name']}] page {pair_info['before_page_num'] + 1}: "
+                    "元画像を読み込めません。"
+                ),
+                "pair_info": pair_info,
+            }
+
+        if img_comp is None:
+            return {
+                "ok": False,
+                "error": (
+                    f"[{pair_info['after_display_name']}] page {pair_info['after_page_num'] + 1}: "
+                    "比較画像を読み込めません。"
+                ),
+                "pair_info": pair_info,
+            }
+
+        if img_ref.shape != img_comp.shape:
+            return {
+                "ok": False,
+                "error": (
+                    f"画像サイズ不一致: "
+                    f"元 '{pair_info['before_display_name']}' page {pair_info['before_page_num'] + 1} "
+                    f"{img_ref.shape[1]}x{img_ref.shape[0]} / "
+                    f"先 '{pair_info['after_display_name']}' page {pair_info['after_page_num'] + 1} "
+                    f"{img_comp.shape[1]}x{img_comp.shape[0]}"
+                ),
+                "pair_info": pair_info,
+            }
+
+        output_img = img_comp.copy()
+
+        gray_ref = cv2.cvtColor(img_ref, cv2.COLOR_BGR2GRAY)
+        gray_comp = cv2.cvtColor(img_comp, cv2.COLOR_BGR2GRAY)
+
+        diff = cv2.absdiff(gray_ref, gray_comp)
+        _, diff_bin = cv2.threshold(diff, 50, 255, 0)
+        diff_bin = cv2.bitwise_and(diff_bin, gray_ref)
+
+        contours, _ = cv2.findContours(diff_bin, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        significant_contours = [c for c in contours if contour_is_significant(c)]
+        has_diff = len(significant_contours) > 0
+
+        for contour in significant_contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            cv2.rectangle(
+                output_img,
+                (max(x - 2, 0), max(y - 2, 0)),
+                (min(x + w + 2, output_img.shape[1] - 1), min(y + h + 2, output_img.shape[0] - 1)),
+                color_bgr,
+                bold,
+            )
+
+        write_ok = cv2.imwrite(str(result_path), output_img)
+        if not write_ok:
+            return {
+                "ok": False,
+                "error": (
+                    f"[{pair_info['after_display_name']}] page {pair_info['after_page_num'] + 1}: "
+                    "差分画像の保存に失敗しました。"
+                ),
+                "pair_info": pair_info,
+            }
+
+        return {
+            "ok": True,
+            "error": None,
+            "pair_info": pair_info,
+            "has_diff": has_diff,
+            "result_path": result_path,
+        }
+
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": (
+                f"[{pair_info['after_display_name']}] page {pair_info['after_page_num'] + 1}: "
+                f"差分検出中にエラーが発生しました: {e}"
+            ),
+            "pair_info": pair_info,
+        }
+
+
+def find_diff(page_pairs, result_folder: Path, color_bgr, bold, bar, progress_start: int = 70, progress_span: int = 30):
+    """
+    ページペア単位で並列差分検出する。
+    """
+    ensure_dir(result_folder)
+
+    if not page_pairs:
+        return [], ["比較対象ページがありません。"], bar
+
+    results = []
+    errors = []
+
+    tasks = [(pair_info, result_folder, color_bgr, bold) for pair_info in page_pairs]
+    total = len(tasks)
+    completed = 0
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_index = {executor.submit(compare_images, task): task[-1] for task in tasks}
-        
-        for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_index), total=len(tasks), desc="差分を検出中"):
-            index = future_to_index[future]
-            try:
-                has_diff, _, _ = future.result()
-                differences[index] = has_diff
-            except Exception as exc:
-                print(f'タスク {index} で例外が発生しました: {exc}')
-                differences[index] = "エラー"
+        future_to_pair = {
+            executor.submit(compare_single_image_pair, task): task[0]
+            for task in tasks
+        }
 
-            bar_num += bar_increment
-            bar.progress(int(min(bar_num, 100)), text="差分を検出中...")
+        for future in tqdm.tqdm(
+            concurrent.futures.as_completed(future_to_pair),
+            total=total,
+            desc="差分を検出中"
+        ):
+            result = future.result()
+            if result["ok"]:
+                results.append(result)
+            else:
+                errors.append(result["error"])
 
-    print("------完了!------")
-    
-    return result_folder, differences, bar
+            completed += 1
+            current_progress = progress_start + int(progress_span * completed / total)
+            bar.progress(min(current_progress, 100), text="差分を検出中...")
 
-def make_check_filekey(key_file):
-    root, ext = os.path.splitext(key_file)
-    dirname, filename = os.path.split(root)
-    filename_del = filename.split("_")
-    filekey = filename_del[0]
-    return filekey
+    results.sort(key=lambda x: x["pair_info"]["global_page_index"])
+
+    return results, errors, bar
+
 
 def streamlit_main():
     st.title(":hammer_and_wrench: pdf difference checker :hammer_and_wrench:")
     st.divider()
 
     st.sidebar.title("Upload")
-    before_pdf_file = st.sidebar.file_uploader("突き合わせ元のpdf", accept_multiple_files=True, type="pdf")
+    before_pdf_files = st.sidebar.file_uploader(
+        "突き合わせ元のpdf",
+        accept_multiple_files=True,
+        type="pdf",
+        key="before_pdf_files",
+    )
+
     st.sidebar.title("")
-    after_pdf_file = st.sidebar.file_uploader("突き合わせ先のpdf", accept_multiple_files=True, type="pdf")
+    after_pdf_files = st.sidebar.file_uploader(
+        "突き合わせ先のpdf",
+        accept_multiple_files=True,
+        type="pdf",
+        key="after_pdf_files",
+    )
+
     st.sidebar.divider()
     st.sidebar.title("Options")
+
     change_scale = st.sidebar.selectbox(
         "差分チェックをするスケール",
         ("RGB", "GRAY")
     )
+
     color = st.sidebar.color_picker("マーキングする色", "#00ff00")
+
     bold = st.sidebar.slider(
-        "差分を囲う線の太さ", 0, 10, 3)
+        "差分を囲う線の太さ", 0, 10, 3
+    )
+
     st.sidebar.divider()
 
-    if not before_pdf_file or not after_pdf_file:
-        st.warning("突き合わせ元と突き合わせ先のpdfファイルのページ数と縦横のサイズが同じことを確認の上，アップロードをしてください。", icon="⚠️")
+    if not before_pdf_files or not after_pdf_files:
+        st.warning(
+            "突き合わせ元と突き合わせ先のPDFファイルは、比較したい順番でアップロードしてください。"
+            "ファイル数が異なっていても、合計ページ数が同じであれば比較できます。",
+            icon="⚠️"
+        )
+        st.warning(
+            "対応ページのレンダリング後画像サイズが一致しない場合、そのページはエラーになります。",
+            icon="⚠️"
+        )
         st.warning("色の差分チェックは苦手です。ご了承ください。", icon="⚠️")
-    else:
-        if st.button("突き合わせ開始"):
-            before_temp_dir, after_temp_dir = None, None
-            try:
-                success = st.empty()
-                success.success("ファイルアップロード成功!")
-                color_rgb = ImageColor.getcolor(color, "RGB")
-                color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
-                time.sleep(1)
-                success.empty()
+        return
 
-                if len(before_pdf_file) != len(after_pdf_file):
-                    st.error("アップロードされているファイルの数が等しくありません。ご確認ください。", icon="🚨")
-                    return
+    if st.button("突き合わせ開始"):
+        before_temp_dir = None
+        after_temp_dir = None
 
-                bar = st.progress(0, text="PDFファイルを読み込み中...")
-                
-                # Create temporary directories
-                before_temp_dir = Path(tempfile.mkdtemp())
-                after_temp_dir = Path(tempfile.mkdtemp())
+        try:
+            success_box = st.empty()
+            success_box.success("ファイルアップロード成功!")
+            color_rgb = ImageColor.getcolor(color, "RGB")
+            color_bgr = (color_rgb[2], color_rgb[1], color_rgb[0])
+            time.sleep(0.8)
+            success_box.empty()
 
-                # Save uploaded files to temp dirs
-                for i, b_pdf in enumerate(before_pdf_file):
-                    path = before_temp_dir / f"{i:003}.pdf"
-                    before_file_dict[f"{i:003}"] = Path(b_pdf.name).stem
-                    with open(path, "wb") as f:
-                        f.write(b_pdf.getbuffer())
-                
-                for i, a_pdf in enumerate(after_pdf_file):
-                    path = after_temp_dir / f"{i:003}.pdf"
-                    after_file_dict[f"{i:003}"] = Path(a_pdf.name).stem
-                    with open(path, "wb") as f:
-                        f.write(a_pdf.getbuffer())
+            bar = st.progress(0, text="PDFファイルを読み込み中...")
 
-                bar.progress(10, text="PDFをJPEGに変換中...")
-                bar = pdf2images(0, before_temp_dir, bar, 10, change_scale)
-                
-                bar.progress(40, text="PDFをJPEGに変換中...")
-                bar = pdf2images(1, after_temp_dir, bar, 40, change_scale)
-                
-                bar.progress(70, text="差分を検出中...")
-                result_folder, differences, bar = find_diff(before_temp_dir, after_temp_dir, color_bgr, bold, bar)
+            before_temp_dir = Path(tempfile.mkdtemp(prefix="before_pdf_"))
+            after_temp_dir = Path(tempfile.mkdtemp(prefix="after_pdf_"))
 
-                if result_folder == "error":
-                    return
+            before_img_dir = ensure_dir(before_temp_dir / "before_pdf_img")
+            after_img_dir = ensure_dir(after_temp_dir / "after_pdf_img")
+            result_folder = ensure_dir(after_temp_dir / "result_folder")
 
-                before_jpg_files = sorted(glob.glob(str(before_temp_dir / "before_pdf_img/*.jpg")))
-                result_jpgs = sorted(glob.glob(str(result_folder / "*.jpg")))
-                
-                # Ensure all result images are written before proceeding
-                while len(result_jpgs) != len(before_jpg_files):
-                    time.sleep(0.5)
-                    result_jpgs = sorted(glob.glob(str(result_folder / "*.jpg")))
+            # 1) Save uploaded PDFs and build manifest
+            before_manifest = build_pdf_manifest(before_pdf_files, before_temp_dir)
+            after_manifest = build_pdf_manifest(after_pdf_files, after_temp_dir)
 
-                bar.progress(100, text="完了!")
-                time.sleep(0.5)
-                bar.empty()
-                
-                zip_io = io.BytesIO()
-                with zipfile.ZipFile(zip_io, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                    st.toast("結果を表示中…", icon="🏃‍♂️")
-                    old_a_file_key = ""
-                    for i in range(len(result_jpgs)):
-                        before_file_key = make_check_filekey(before_jpg_files[i])
-                        after_file_key = make_check_filekey(result_jpgs[i]) # Use result file for key
+            bar.progress(10, text="元PDFをJPEGに変換中...")
 
-                        if old_a_file_key != str(after_file_dict.get(after_file_key, '')):
-                            if old_a_file_key != "":
-                                st.divider()
+            # 2) Convert before PDFs
+            before_results, before_convert_errors, bar = pdf2images(
+                pdf_manifest=before_manifest,
+                output_dir=before_img_dir,
+                bar=bar,
+                progress_start=10,
+                progress_span=30,
+                change_scale=change_scale,
+                progress_text="元PDFをJPEGに変換中..."
+            )
 
-                        if i < len(differences) and differences[i]:
-                            st.header(f":bell: :red[{differences[i]}]")
+            # 3) Convert after PDFs
+            after_results, after_convert_errors, bar = pdf2images(
+                pdf_manifest=after_manifest,
+                output_dir=after_img_dir,
+                bar=bar,
+                progress_start=40,
+                progress_span=30,
+                change_scale=change_scale,
+                progress_text="先PDFをJPEGに変換中..."
+            )
 
-                        image_comparison(
-                            img1=Image.open(before_jpg_files[i]),
-                            img2=Image.open(result_jpgs[i]),
-                            label1=before_file_dict.get(before_file_key, "元画像"),
-                            label2=after_file_dict.get(after_file_key, "比較画像"),
-                            width=700,
-                            starting_position=1
+            convert_errors = before_convert_errors + after_convert_errors
+            if convert_errors:
+                for err in convert_errors:
+                    st.error(err)
+                return
+
+            # 4) Build page pairs by flattened page sequence
+            page_pairs, pairing_errors = build_page_pairs(before_results, after_results)
+            if pairing_errors:
+                for err in pairing_errors:
+                    st.error(err)
+                return
+
+            bar.progress(70, text="差分を検出中...")
+
+            # 5) Compare page pairs
+            diff_results, diff_errors, bar = find_diff(
+                page_pairs=page_pairs,
+                result_folder=result_folder,
+                color_bgr=color_bgr,
+                bold=bold,
+                bar=bar,
+                progress_start=70,
+                progress_span=30,
+            )
+
+            if diff_errors:
+                for err in diff_errors:
+                    st.error(err)
+                return
+
+            bar.progress(100, text="完了!")
+            time.sleep(0.5)
+            bar.empty()
+
+            if not diff_results:
+                st.warning("比較結果がありませんでした。")
+                return
+
+            # 6) ZIP output
+            zip_io = io.BytesIO()
+            with zipfile.ZipFile(zip_io, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                st.toast("結果を表示中…", icon="🏃‍♂️")
+
+                previous_after_name = None
+
+                for result in diff_results:
+                    pair_info = result["pair_info"]
+                    before_name = pair_info["before_display_name"]
+                    before_page_num = pair_info["before_page_num"]
+                    after_name = pair_info["after_display_name"]
+                    after_page_num = pair_info["after_page_num"]
+                    before_img_path = pair_info["before_image_path"]
+                    result_img_path = result["result_path"]
+
+                    if previous_after_name is not None and previous_after_name != after_name:
+                        st.divider()
+
+                    if result["has_diff"]:
+                        st.header(":bell: :red[There are differences]")
+
+                    image_comparison(
+                        img1=Image.open(before_img_path),
+                        img2=Image.open(result_img_path),
+                        label1=f"{before_name} (p.{before_page_num + 1})",
+                        label2=f"{after_name} (p.{after_page_num + 1})",
+                        width=700,
+                        starting_position=1
+                    )
+
+                    with open(result_img_path, "rb") as img_file:
+                        zip_file.writestr(
+                            f"result_{after_name}_page_{after_page_num + 1:04d}_global_{pair_info['global_page_index'] + 1:04d}.jpg",
+                            img_file.read()
                         )
 
-                        with open(result_jpgs[i], "rb") as img_file:
-                            zip_file.writestr(f"result_{after_file_dict.get(after_file_key, i)}_{i:003d}.jpg", img_file.read())
-                        
-                        old_a_file_key = str(after_file_dict.get(after_file_key, ''))
+                    previous_after_name = after_name
 
-                st.divider()
-                zip_io.seek(0)
-                st.download_button(
-                    label="差分画像をZIPでダウンロード",
-                    data=zip_io,
-                    file_name="result.zip",
-                    mime="application/zip"
-                )
+            st.divider()
 
-                st.balloons()
-                st.toast('全ての表示が完了しました！', icon='😍')
+            zip_io.seek(0)
+            st.download_button(
+                label="差分画像をZIPでダウンロード",
+                data=zip_io,
+                file_name="result.zip",
+                mime="application/zip"
+            )
 
-            except Exception as e:
-                st.error(f"エラーが発生しました: {e}")
-            finally:
-                # Cleanup temp directories
-                if before_temp_dir and os.path.exists(before_temp_dir):
-                    shutil.rmtree(before_temp_dir)
-                if after_temp_dir and os.path.exists(after_temp_dir):
-                    shutil.rmtree(after_temp_dir)
+            st.balloons()
+            st.toast("全ての表示が完了しました！", icon="😍")
+
+        except Exception as e:
+            st.error(f"エラーが発生しました: {e}")
+
+        finally:
+            if before_temp_dir and before_temp_dir.exists():
+                shutil.rmtree(before_temp_dir, ignore_errors=True)
+            if after_temp_dir and after_temp_dir.exists():
+                shutil.rmtree(after_temp_dir, ignore_errors=True)
+
 
 def main():
     st.set_page_config(
@@ -316,6 +561,6 @@ def main():
     )
     streamlit_main()
 
+
 if __name__ == "__main__":
     main()
-
